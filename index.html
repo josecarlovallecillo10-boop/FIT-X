@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FitTracker">
+<meta name="theme-color" content="#0f0f14">
+<title>FitTracker</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%236C63FF'/><text x='90' y='125' font-size='90' text-anchor='middle'>💪</text></svg>">
+<style>
+:root {
+  --bg: #0f0f14;
+  --surface: #1a1a24;
+  --surface2: #22223a;
+  --border: rgba(255,255,255,0.08);
+  --accent: #6C63FF;
+  --accent2: #a78bfa;
+  --green: #22c55e;
+  --amber: #f59e0b;
+  --red: #ef4444;
+  --text: #f0f0f8;
+  --muted: #8887a0;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; overscroll-behavior: none; }
+
+/* Layout */
+#app { display: flex; flex-direction: column; height: 100dvh; }
+#content { flex: 1; overflow-y: auto; padding: calc(var(--safe-top) + 56px) 16px calc(var(--safe-bottom) + 76px); }
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* Top header */
+#header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: calc(var(--safe-top) + 12px) 20px 12px; background: rgba(15,15,20,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 0.5px solid var(--border); }
+#header-inner { display: flex; align-items: center; justify-content: space-between; }
+#header-title { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+#header-phase { font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 20px; background: rgba(108,99,255,0.2); color: var(--accent2); }
+
+/* Bottom nav */
+#nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; padding: 10px 0 calc(var(--safe-bottom) + 8px); background: rgba(15,15,20,0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 0.5px solid var(--border); display: grid; grid-template-columns: repeat(4, 1fr); }
+.nav-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; border: none; background: none; color: var(--muted); font-size: 10px; font-weight: 500; cursor: pointer; padding: 4px 0; transition: color 0.15s; }
+.nav-btn svg { width: 24px; height: 24px; }
+.nav-btn.active { color: var(--accent2); }
+
+/* Cards */
+.card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+.card-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+
+/* Metric grid */
+.metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.metric-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.metric-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 500; }
+.metric-value { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; color: var(--text); line-height: 1; }
+.metric-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+/* Exercise rows */
+.ex-header { display: grid; grid-template-columns: 1fr 52px 52px 60px; gap: 6px; margin-bottom: 8px; padding: 0 2px; }
+.ex-header span { font-size: 10px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; }
+.ex-header span:first-child { text-align: left; }
+.ex-row { display: grid; grid-template-columns: 1fr 52px 52px 60px; gap: 6px; align-items: center; margin-bottom: 8px; }
+.ex-row-name { font-size: 13px; font-weight: 500; color: var(--text); padding: 2px 0; line-height: 1.3; }
+.ex-row input { background: var(--surface2); border: 0.5px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; font-weight: 600; text-align: center; padding: 8px 4px; width: 100%; -webkit-appearance: none; }
+.ex-row input:focus { outline: none; border-color: var(--accent); }
+
+/* Treadmill */
+.tread-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 12px; color: var(--muted); font-weight: 500; }
+.field input { background: var(--surface2); border: 0.5px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 16px; font-weight: 600; padding: 10px 12px; -webkit-appearance: none; }
+.field input:focus { outline: none; border-color: var(--accent); }
+
+/* Result pill */
+.result-pill { background: rgba(108,99,255,0.12); border: 0.5px solid rgba(108,99,255,0.3); border-radius: var(--radius-sm); padding: 12px; text-align: center; margin-bottom: 12px; }
+.result-pill .val { font-size: 24px; font-weight: 700; color: var(--accent2); }
+.result-pill .lbl { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+/* Save button */
+.btn-save { background: var(--accent); color: #fff; border: none; border-radius: var(--radius); padding: 14px; font-size: 16px; font-weight: 600; width: 100%; cursor: pointer; letter-spacing: -0.2px; transition: opacity 0.15s; }
+.btn-save:active { opacity: 0.8; }
+
+/* Progress bars */
+.prog-item { margin-bottom: 16px; }
+.prog-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.prog-name { font-size: 13px; font-weight: 500; }
+.prog-val { font-size: 12px; color: var(--muted); font-weight: 600; }
+.prog-bar-bg { background: var(--surface2); border-radius: 4px; height: 6px; overflow: hidden; }
+.prog-bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s cubic-bezier(.4,0,.2,1); }
+
+/* Week grid */
+.week-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.day-cell { aspect-ratio: 1; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; border: 0.5px solid var(--border); background: var(--surface2); color: var(--muted); }
+.day-cell.done { background: var(--accent); border-color: var(--accent); color: #fff; }
+.day-cell.today { border-color: var(--accent2); color: var(--accent2); }
+
+/* Weight input */
+.weight-row { display: flex; gap: 10px; align-items: center; }
+.weight-row input { flex: 1; background: var(--surface2); border: 0.5px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 18px; font-weight: 700; padding: 10px 14px; -webkit-appearance: none; }
+.weight-row input:focus { outline: none; border-color: var(--accent); }
+.btn-sm { background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); padding: 10px 16px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.btn-sm:active { opacity: 0.8; }
+
+/* Chart canvas */
+.chart-wrap { position: relative; width: 100%; height: 160px; }
+
+/* Log entries */
+.log-item { padding: 14px 0; border-bottom: 0.5px solid var(--border); }
+.log-item:last-child { border-bottom: none; }
+.log-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.log-date { font-size: 14px; font-weight: 600; }
+.log-cals { font-size: 16px; font-weight: 700; color: var(--accent2); }
+.log-detail { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.log-badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 20px; background: rgba(108,99,255,0.15); color: var(--accent2); margin-left: 6px; }
+
+/* Phase cards in Meta */
+.phase-card { border-radius: var(--radius); padding: 16px; margin-bottom: 10px; }
+.phase-card.p1 { background: rgba(108,99,255,0.08); border: 0.5px solid rgba(108,99,255,0.25); }
+.phase-card.p2 { background: rgba(34,197,94,0.07); border: 0.5px solid rgba(34,197,94,0.2); }
+.phase-card.p3 { background: rgba(245,158,11,0.07); border: 0.5px solid rgba(245,158,11,0.2); }
+.phase-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+.phase-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+.p1 h3 { color: var(--accent2); }
+.p2 h3 { color: var(--green); }
+.p3 h3 { color: var(--amber); }
+
+/* Estimator */
+.est-select { background: var(--surface2); border: 0.5px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; padding: 10px 12px; width: 100%; margin-bottom: 10px; -webkit-appearance: none; }
+
+/* Phase buttons */
+.phase-btn-row { display: flex; gap: 8px; }
+.phase-btn { flex: 1; padding: 10px; border-radius: var(--radius-sm); border: 0.5px solid var(--border); background: var(--surface2); color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+.phase-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.phase-btn:active { opacity: 0.8; }
+
+/* Toast */
+#toast { position: fixed; bottom: calc(var(--safe-bottom) + 90px); left: 50%; transform: translateX(-50%) translateY(10px); background: rgba(108,99,255,0.95); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: 500; white-space: nowrap; opacity: 0; pointer-events: none; transition: all 0.25s; z-index: 999; backdrop-filter: blur(10px); }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Section divider label */
+.section-lbl { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 16px 0 10px; }
+.section-lbl:first-child { margin-top: 0; }
+
+/* Empty state */
+.empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 14px; line-height: 1.7; }
+.empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+/* Scrollbar hide */
+#content::-webkit-scrollbar { display: none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <div id="header-inner">
+      <span id="header-title">💪 FitTracker</span>
+      <span id="header-phase">Fase 1</span>
+    </div>
+  </div>
+
+  <div id="content">
+
+    <!-- HOY -->
+    <div class="screen active" id="screen-hoy">
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-label">Peso actual</div>
+          <div class="metric-value" id="m-weight">196</div>
+          <div class="metric-sub">libras</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Días esta semana</div>
+          <div class="metric-value" id="m-week">0</div>
+          <div class="metric-sub">de 5 objetivo</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Cal. estimadas hoy</div>
+          <div class="metric-value" id="m-cals">0</div>
+          <div class="metric-sub">kcal quemadas</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Sesiones totales</div>
+          <div class="metric-value" id="m-total">0</div>
+          <div class="metric-sub">registradas</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M6 4v6a6 6 0 0 0 12 0V4"/><line x1="4" y1="20" x2="20" y2="20"/></svg>
+          Mancuernas
+        </div>
+        <div class="ex-header">
+          <span>Ejercicio</span>
+          <span>Sets</span>
+          <span>Reps</span>
+          <span>Peso lb</span>
+        </div>
+        <div id="ex-list"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M13 4v16M5 8l8-4 8 4M5 12l8 4 8-4M5 16l8 4 8-4"/></svg>
+          Caminadora
+        </div>
+        <div class="tread-grid">
+          <div class="field">
+            <label>Tiempo (min)</label>
+            <input type="number" id="t-time" value="30" min="0" max="180" inputmode="decimal" oninput="calcTread()">
+          </div>
+          <div class="field">
+            <label>Velocidad (km/h)</label>
+            <input type="number" id="t-speed" value="5.5" min="2" max="15" step="0.5" inputmode="decimal" oninput="calcTread()">
+          </div>
+        </div>
+        <div class="result-pill">
+          <div class="val" id="t-cals">87</div>
+          <div class="lbl">kcal estimadas · caminadora</div>
+        </div>
+      </div>
+
+      <button class="btn-save" onclick="saveSession()">Guardar sesión</button>
+    </div>
+
+    <!-- PROGRESO -->
+    <div class="screen" id="screen-prog">
+      <div class="card">
+        <div class="card-title">Actualizar peso</div>
+        <div class="weight-row">
+          <input type="number" id="new-weight" placeholder="Peso (libras)" inputmode="decimal" step="0.5">
+          <button class="btn-sm" onclick="updateWeight()">Guardar</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Objetivo de 3 meses</div>
+        <div class="prog-item">
+          <div class="prog-header">
+            <span class="prog-name" style="color:#a78bfa">Mes 1 — Adelgazar + músculo</span>
+            <span class="prog-val" id="p1v">0 / 5 lb</span>
+          </div>
+          <div class="prog-bar-bg"><div class="prog-bar-fill" id="p1b" style="width:0%;background:var(--accent)"></div></div>
+        </div>
+        <div class="prog-item">
+          <div class="prog-header">
+            <span class="prog-name" style="color:#22c55e">Mes 2 — Máxima quema</span>
+            <span class="prog-val" id="p2v">0 / 10 lb</span>
+          </div>
+          <div class="prog-bar-bg"><div class="prog-bar-fill" id="p2b" style="width:0%;background:var(--green)"></div></div>
+        </div>
+        <div class="prog-item" style="margin-bottom:0">
+          <div class="prog-header">
+            <span class="prog-name" style="color:#f59e0b">Mes 3 — Tonificar</span>
+            <span class="prog-val" id="p3v">0 / 5 lb</span>
+          </div>
+          <div class="prog-bar-bg"><div class="prog-bar-fill" id="p3b" style="width:0%;background:var(--amber)"></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Semana actual</div>
+        <div class="week-row" id="week-row"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Calorías — últimos 7 días</div>
+        <div class="chart-wrap">
+          <canvas id="cal-chart" role="img" aria-label="Gráfico de calorías quemadas por día en los últimos 7 días">Calorías quemadas por día.</canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORIAL -->
+    <div class="screen" id="screen-hist">
+      <div class="card">
+        <div class="card-title">Sesiones registradas</div>
+        <div id="log-list">
+          <div class="empty"><div class="empty-icon">🏋️</div>Todavía no hay sesiones.<br>¡Completá tu primera hoy!</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- META -->
+    <div class="screen" id="screen-meta">
+      <div class="section-lbl">Plan de fases</div>
+      <div class="phase-card p1">
+        <h3>Fase 1 · Mes 1 — Adelgazar + sacar músculo</h3>
+        <p>Meta: −5 lb. Cardio moderado 30–40 min en caminadora + pesas full body 3–4x/semana. Déficit calórico leve (~300 kcal/día). Ejercicios: press, remo, sentadillas, curl.</p>
+      </div>
+      <div class="phase-card p2">
+        <h3>Fase 2 · Mes 2 — Máxima quema + músculo</h3>
+        <p>Meta: −10 lb. Mayor intensidad en caminadora (inclinación o intervalos). Pesas 4–5x/semana con división por grupos musculares. Déficit ~400 kcal/día.</p>
+      </div>
+      <div class="phase-card p3">
+        <h3>Fase 3 · Mes 3 — Tonificación y definición</h3>
+        <p>Meta: −5 lb + definición. Cardio 20–25 min de alta intensidad. Pesas 5x/semana con más reps y menos descanso. Proteína alta, déficit moderado.</p>
+      </div>
+
+      <div class="section-lbl">Calculadora de calorías</div>
+      <div class="card">
+        <select class="est-select" id="est-ex" onchange="estimateCals()">
+          <option value="180">Press de banca con mancuernas</option>
+          <option value="160">Curl de bíceps</option>
+          <option value="170">Remo con mancuerna</option>
+          <option value="200">Sentadilla goblet</option>
+          <option value="190">Press de hombro</option>
+          <option value="175">Extensión de tríceps</option>
+          <option value="210">Peso muerto con mancuernas</option>
+          <option value="220">Zancadas con mancuernas</option>
+        </select>
+        <div class="tread-grid" style="margin-bottom:12px">
+          <div class="field">
+            <label>Sets</label>
+            <input type="number" id="est-sets" value="3" min="1" max="10" inputmode="decimal" oninput="estimateCals()">
+          </div>
+          <div class="field">
+            <label>Reps</label>
+            <input type="number" id="est-reps" value="12" min="1" max="40" inputmode="decimal" oninput="estimateCals()">
+          </div>
+        </div>
+        <div class="result-pill">
+          <div class="val" id="est-result">~36</div>
+          <div class="lbl">kcal estimadas para ~196 lb</div>
+        </div>
+      </div>
+
+      <div class="section-lbl">Cambiar fase</div>
+      <div class="card">
+        <div class="phase-btn-row">
+          <button class="phase-btn active" id="pbtn-1" onclick="setPhase(1)">Fase 1</button>
+          <button class="phase-btn" id="pbtn-2" onclick="setPhase(2)">Fase 2</button>
+          <button class="phase-btn" id="pbtn-3" onclick="setPhase(3)">Fase 3</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <nav id="nav">
+    <button class="nav-btn active" id="nb-hoy" onclick="switchScreen('hoy')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Hoy
+    </button>
+    <button class="nav-btn" id="nb-prog" onclick="switchScreen('prog')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Progreso
+    </button>
+    <button class="nav-btn" id="nb-hist" onclick="switchScreen('hist')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1 0 .5-4.5"/><polyline points="3 3 3 7 7 7"/></svg>
+      Historial
+    </button>
+    <button class="nav-btn" id="nb-meta" onclick="switchScreen('meta')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+      Meta
+    </button>
+  </nav>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ─── State ───────────────────────────────────────────────────────
+let S = JSON.parse(localStorage.getItem('ft_v2') || 'null') || {
+  weight: 196,
+  phase: 1,
+  sessions: []
+};
+function persist() { try { localStorage.setItem('ft_v2', JSON.stringify(S)); } catch(e){} }
+
+// ─── Exercise definitions per phase ──────────────────────────────
+const EX = {
+  1: [
+    { name: 'Press de banca', cph: 180 },
+    { name: 'Curl de bíceps', cph: 160 },
+    { name: 'Remo mancuerna', cph: 170 },
+    { name: 'Press de hombro', cph: 190 },
+    { name: 'Sentadilla goblet', cph: 200 },
+    { name: 'Ext. de tríceps', cph: 175 },
+  ],
+  2: [
+    { name: 'Press de banca', cph: 180 },
+    { name: 'Curl de bíceps', cph: 160 },
+    { name: 'Remo mancuerna', cph: 170 },
+    { name: 'Press de hombro', cph: 190 },
+    { name: 'Sentadilla goblet', cph: 200 },
+    { name: 'Ext. de tríceps', cph: 175 },
+    { name: 'Peso muerto', cph: 210 },
+    { name: 'Zancadas', cph: 220 },
+  ],
+  3: [
+    { name: 'Press de banca', cph: 180 },
+    { name: 'Curl concentración', cph: 160 },
+    { name: 'Remo mancuerna', cph: 170 },
+    { name: 'Press de hombro', cph: 190 },
+    { name: 'Sentadilla goblet', cph: 200 },
+    { name: 'Ext. de tríceps', cph: 175 },
+    { name: 'Peso muerto', cph: 210 },
+    { name: 'Zancadas', cph: 220 },
+    { name: 'Elevación lateral', cph: 150 },
+  ]
+};
+
+// ─── Build exercise list ──────────────────────────────────────────
+function buildExList() {
+  const list = document.getElementById('ex-list');
+  list.innerHTML = EX[S.phase].map((ex, i) => `
+    <div class="ex-row">
+      <div class="ex-row-name">${ex.name}</div>
+      <input type="number" id="s${i}" value="3" min="0" max="20" inputmode="decimal" oninput="updateTodayCals()">
+      <input type="number" id="r${i}" value="12" min="0" max="50" inputmode="decimal" oninput="updateTodayCals()">
+      <input type="number" id="w${i}" value="15" min="0" max="200" step="2.5" inputmode="decimal">
+    </div>
+  `).join('');
+  updateTodayCals();
+}
+
+// ─── Calorie calculations ─────────────────────────────────────────
+function calcExCals() {
+  const exList = EX[S.phase];
+  let total = 0;
+  exList.forEach((ex, i) => {
+    const sets = parseFloat(document.getElementById('s'+i)?.value) || 0;
+    const reps = parseFloat(document.getElementById('r'+i)?.value) || 0;
+    const mins = (sets * reps * 3.5) / 60;
+    total += (ex.cph / 60) * mins;
+  });
+  return Math.round(total);
+}
+
+function calcTread() {
+  const t = parseFloat(document.getElementById('t-time').value) || 0;
+  const spd = parseFloat(document.getElementById('t-speed').value) || 5;
+  const met = spd < 4 ? 3.0 : spd < 5.5 ? 3.8 : spd < 7 ? 5.0 : spd < 9 ? 7.5 : 10.5;
+  const wKg = S.weight * 0.4536;
+  const cals = Math.round(met * wKg * (t / 60));
+  document.getElementById('t-cals').textContent = cals;
+  updateTodayCals();
+  return cals;
+}
+
+function updateTodayCals() {
+  const tCals = parseFloat(document.getElementById('t-cals').textContent) || 0;
+  const eCals = calcExCals();
+  document.getElementById('m-cals').textContent = tCals + eCals;
+}
+
+// ─── Save session ─────────────────────────────────────────────────
+function saveSession() {
+  const exList = EX[S.phase];
+  let exercises = [];
+  let exCals = 0;
+  exList.forEach((ex, i) => {
+    const sets = parseInt(document.getElementById('s'+i)?.value) || 0;
+    const reps = parseInt(document.getElementById('r'+i)?.value) || 0;
+    const wt = parseFloat(document.getElementById('w'+i)?.value) || 0;
+    if (sets > 0) {
+      const mins = (sets * reps * 3.5) / 60;
+      exCals += (ex.cph / 60) * mins;
+      exercises.push({ name: ex.name, sets, reps, wt });
+    }
+  });
+  const treadCals = parseInt(document.getElementById('t-cals').textContent) || 0;
+  const tTime = document.getElementById('t-time').value;
+  const tSpeed = document.getElementById('t-speed').value;
+  const totalCals = Math.round(exCals) + treadCals;
+
+  const now = new Date();
+  const dateKey = now.toDateString();
+  const dateStr = now.toLocaleDateString('es-HN', { weekday: 'short', day: 'numeric', month: 'short' });
+
+  S.sessions.unshift({ dateKey, dateStr, exercises, tTime, tSpeed, totalCals, phase: S.phase });
+  persist();
+  renderAll();
+  showToast('✓ Sesión guardada — ' + totalCals + ' kcal');
+}
+
+// ─── Update weight ────────────────────────────────────────────────
+function updateWeight() {
+  const w = parseFloat(document.getElementById('new-weight').value);
+  if (w > 50 && w < 500) {
+    S.weight = w;
+    persist();
+    renderAll();
+    showToast('Peso actualizado: ' + w + ' lb');
+  }
+}
+
+// ─── Set phase ────────────────────────────────────────────────────
+function setPhase(p) {
+  S.phase = p;
+  persist();
+  buildExList();
+  renderAll();
+  showToast('Fase ' + p + ' activada');
+}
+
+// ─── Estimator ────────────────────────────────────────────────────
+function estimateCals() {
+  const cph = parseInt(document.getElementById('est-ex').value) || 180;
+  const sets = parseInt(document.getElementById('est-sets').value) || 3;
+  const reps = parseInt(document.getElementById('est-reps').value) || 12;
+  const mins = (sets * reps * 3.5) / 60;
+  const cals = Math.round((cph / 60) * mins);
+  document.getElementById('est-result').textContent = '~' + cals;
+}
+
+// ─── Render all ───────────────────────────────────────────────────
+function renderAll() {
+  document.getElementById('m-weight').textContent = S.weight;
+  document.getElementById('m-total').textContent = S.sessions.length;
+  document.getElementById('m-week').textContent = getWeekCount();
+  document.getElementById('header-phase').textContent = 'Fase ' + S.phase;
+
+  // Phase buttons
+  [1,2,3].forEach(p => {
+    document.getElementById('pbtn-'+p)?.classList.toggle('active', S.phase === p);
+  });
+
+  renderProgress();
+  renderWeek();
+  renderLog();
+  renderChart();
+}
+
+function getWeekCount() {
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay());
+  weekStart.setHours(0,0,0,0);
+  const seen = new Set();
+  S.sessions.forEach(s => {
+    const d = new Date(s.dateKey);
+    if (d >= weekStart) seen.add(s.dateKey);
+  });
+  return seen.size;
+}
+
+function renderProgress() {
+  const startW = 196;
+  const lost = Math.max(0, startW - S.weight);
+  const p1 = Math.min(100, (Math.min(lost, 5) / 5) * 100);
+  const p2 = Math.min(100, (Math.max(0, Math.min(lost - 5, 10)) / 10) * 100);
+  const p3 = Math.min(100, (Math.max(0, Math.min(lost - 15, 5)) / 5) * 100);
+
+  document.getElementById('p1b').style.width = p1 + '%';
+  document.getElementById('p2b').style.width = p2 + '%';
+  document.getElementById('p3b').style.width = p3 + '%';
+  document.getElementById('p1v').textContent = Math.min(lost, 5).toFixed(1) + ' / 5 lb';
+  document.getElementById('p2v').textContent = Math.max(0, Math.min(lost - 5, 10)).toFixed(1) + ' / 10 lb';
+  document.getElementById('p3v').textContent = Math.max(0, Math.min(lost - 15, 5)).toFixed(1) + ' / 5 lb';
+}
+
+function renderWeek() {
+  const days = ['D','L','M','X','J','V','S'];
+  const now = new Date();
+  const row = document.getElementById('week-row');
+  row.innerHTML = days.map((d, i) => {
+    const day = new Date(now);
+    day.setDate(now.getDate() - now.getDay() + i);
+    const key = day.toDateString();
+    const done = S.sessions.some(s => s.dateKey === key);
+    const isToday = key === now.toDateString();
+    const cls = done ? 'done' : isToday ? 'today' : '';
+    return `<div class="day-cell ${cls}">${d}</div>`;
+  }).join('');
+}
+
+function renderLog() {
+  const el = document.getElementById('log-list');
+  if (!S.sessions.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🏋️</div>Todavía no hay sesiones.<br>¡Completá tu primera hoy!</div>';
+    return;
+  }
+  el.innerHTML = S.sessions.slice(0, 30).map(s => {
+    const exStr = s.exercises.length
+      ? s.exercises.map(e => `${e.name} ${e.sets}×${e.reps}`).join(' · ')
+      : 'Solo caminadora';
+    return `<div class="log-item">
+      <div class="log-top">
+        <span class="log-date">${s.dateStr}<span class="log-badge">F${s.phase}</span></span>
+        <span class="log-cals">${s.totalCals} kcal</span>
+      </div>
+      <div class="log-detail">${exStr}<br>Caminadora ${s.tTime} min @ ${s.tSpeed} km/h</div>
+    </div>`;
+  }).join('');
+}
+
+let chartInst = null;
+function renderChart() {
+  const ctx = document.getElementById('cal-chart');
+  if (!ctx) return;
+  const labels = [], data = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toDateString();
+    labels.push(d.toLocaleDateString('es-HN', { weekday: 'short', day: 'numeric' }));
+    data.push(S.sessions.filter(s => s.dateKey === key).reduce((a, s) => a + s.totalCals, 0));
+  }
+  if (chartInst) { chartInst.destroy(); chartInst = null; }
+  chartInst = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: 'rgba(108,99,255,0.6)',
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { color: '#8887a0', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } },
+        x: { ticks: { color: '#8887a0', font: { size: 10 } }, grid: { display: false }, border: { display: false } }
+      }
+    }
+  });
+}
+
+// ─── Tab switching ────────────────────────────────────────────────
+function switchScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('nb-' + id).classList.add('active');
+  if (id === 'prog') renderChart();
+}
+
+// ─── Toast ────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ─── Service Worker ───────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// ─── Init ─────────────────────────────────────────────────────────
+buildExList();
+calcTread();
+renderAll();
+estimateCals();
+</script>
+</body>
+</html>
